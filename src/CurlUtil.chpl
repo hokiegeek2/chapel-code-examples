@@ -23,6 +23,7 @@ module CurlUtil {
     extern const CURLOPT_UPLOAD:CURLoption;
     extern const CURLOPT_WRITEFUNCTION:CURLoption;
     extern const CURLOPT_WRITEDATA:CURLoption;
+    extern const CURLOPT_URL:CURLoption;
 
     class CurlReader {
     
@@ -39,9 +40,7 @@ module CurlUtil {
            Curl.setopt(urlreader, CURLOPT_CAPATH, getEnvVariable('CAPATH',''));           
            Curl.setopt(urlreader, CURLOPT_KEYPASSWD, getEnvVariable('CERT_PASSWD',''));      
        }
-       
-       
-       
+
        proc curlRead(url : string) : string {
            var urlreader = openUrlReader(getEnvVariable('CURL_URL'));
            
@@ -65,52 +64,74 @@ module CurlUtil {
         }   
     }
 
-    proc write() throws {    
-        var urlwriter = openUrlWriter(getEnvVariable('CURL_URL'));
-    
-        Curl.setopt(urlwriter, CURLOPT_VERBOSE, true);
-        Curl.setopt(urlwriter, CURLOPT_USE_SSL, true);
-        Curl.setopt(urlwriter, CURLOPT_SSLCERT, getEnvVariable('CERT_FILE'));
-        Curl.setopt(urlwriter, CURLOPT_SSLKEY, getEnvVariable('KEY_FILE'));
-        Curl.setopt(urlwriter, CURLOPT_CAINFO, getEnvVariable('CACERT_FILE'));
-        Curl.setopt(urlwriter, CURLOPT_CAPATH, getEnvVariable('CAPATH',''));           
-        Curl.setopt(urlwriter, CURLOPT_KEYPASSWD, getEnvVariable('CERT_PASSWD',''));
-
-        Curl.setopt(urlwriter, CURLOPT_CUSTOMREQUEST, 'PATCH');
-        
-        var payload = '[{"op": "replace", "path": "/subsets", "value": [{"addresses": [{"ip": "192.168.1.11"}]}]}]';
-        var numChars = payload.size;
-        
-        Curl.setopt(urlwriter, CURLOPT_POSTFIELDS, payload);
-        //Curl.setopt(urlwriter, CURLOPT_POSTFIELDSIZE, 15000);
-        //Curl.setopt(urlwriter, CURLOPT_READDATA, payload);
+    proc write() throws {        
+        var curl = Curl.easyInit();
+        Curl.easySetopt(curl, CURLOPT_URL, getEnvVariable('CURL_URL'));
 
         var args = new Curl.slist();
         args.append("Accept: application/json");
         args.append("Content-Type: application/json-patch+json");
         args.append("charset: utf-8");
-        Curl.setopt(urlwriter, CURLOPT_HTTPHEADER, args);
+        Curl.setopt(curl, CURLOPT_HTTPHEADER, args);
         
-        urlwriter.write(numChars);
+        Curl.setopt(curl, CURLOPT_VERBOSE, true);
+        Curl.setopt(curl, CURLOPT_USE_SSL, true);
+        Curl.setopt(curl, CURLOPT_SSLCERT, getEnvVariable('CERT_FILE'));
+        Curl.setopt(curl, CURLOPT_SSLKEY, getEnvVariable('KEY_FILE'));
+        Curl.setopt(curl, CURLOPT_CAINFO, getEnvVariable('CACERT_FILE'));
+        Curl.setopt(curl, CURLOPT_CAPATH, getEnvVariable('CAPATH',''));           
+        Curl.setopt(curl, CURLOPT_KEYPASSWD, getEnvVariable('CERT_PASSWD',''));
+
+        Curl.setopt(curl, CURLOPT_CUSTOMREQUEST, 'PATCH');
+        
+        var payload = '[{"op": "replace", "path": "/subsets", "value": [{"addresses": [{"ip": "192.168.1.22"}]}]}]';
+        var numChars = payload.size;
+        
+        Curl.setopt(curl, CURLOPT_POSTFIELDS, payload);
+
+        var ret = Curl.easyPerform(curl);
+
+        args.free();
+        Curl.easyCleanup(curl);     
     }
     
     proc simpleWrite(format: string='plain-text') throws {
         var urlwriter = openUrlWriter('http://localhost:3000/posts');
         
         if format == 'plain-text' {
-            var payload = 'ping';
-            Curl.setopt(urlwriter, CURLOPT_VERBOSE, true);
-            Curl.setopt(urlwriter, CURLOPT_POSTFIELDS, payload);
-            Curl.setopt(urlwriter, CURLOPT_CUSTOMREQUEST, 'POST');
-            urlwriter.write(payload.size);
+            
+            var curl = Curl.easyInit();
+            Curl.easySetopt(curl, CURLOPT_URL, 'http://localhost:3000/posts');
+            Curl.easySetopt(curl, CURLOPT_VERBOSE, true);
+
+            var args = new Curl.slist();
+            args.append("Accept: application/json");
+            args.append("Content-Type: application/json");
+
+            Curl.easySetopt(curl, CURLOPT_HTTPHEADER, args);
+
+            //var jsonPayload = '{"foo": "bar"}';
+            var jsonPayload = '{"foo": "bar", "foo-two":"bizz"}';
+            Curl.easySetopt(curl, CURLOPT_POSTFIELDS, jsonPayload);
+            Curl.easySetopt(curl, CURLOPT_CUSTOMREQUEST, 'POST');
+
+            writeln("calling perform");
+
+            var ret = Curl.easyPerform(curl);
+
+            writeln("perform returned ", ret);
+
+            args.free();
+            Curl.easyCleanup(curl);            
         } else {
             var args = new Curl.slist();
-            //args.append("Accept: application/json");
-            //args.append("Content-Type: application/json");
+            args.append("Accept: application/json");
+            args.append("Content-Type: application/json");
+
             Curl.setopt(urlwriter, CURLOPT_VERBOSE, true);
-            //Curl.setopt(urlwriter, CURLOPT_HTTPHEADER, args);
+            Curl.setopt(urlwriter, CURLOPT_HTTPHEADER, args);
             writeln("The HTTPHEADER ARGS via Curl.slist %t".format(args));
-            var jsonPayload = '{"foo": "bar", "foo-two","bizz"}';
+            var jsonPayload = '{"foo": "bar", "foo-two":"bizz"}';
             var payload = 'simple text';
             //Curl.setopt(urlwriter, CURLOPT_POSTFIELDS,payload);
             Curl.setopt(urlwriter, CURLOPT_POSTFIELDS, jsonPayload);
@@ -160,7 +181,7 @@ module CurlUtil {
 
     proc main() {
         try {
-            simpleWrite('json');
+            write();
         } catch e : Error{
             try! writeln(e);
         }
