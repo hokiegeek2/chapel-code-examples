@@ -77,6 +77,5 @@ module JsonToObjectExamples {
         fbm.add('one', fb);
         fbm.add('two', fbTwo);
         try! writeln("Writing FooBar map to JSON: %jt".format(fbm));
-        try! reader.readf("%jt", fbm);
     }
 }
