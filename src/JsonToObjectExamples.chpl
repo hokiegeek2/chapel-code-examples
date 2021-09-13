@@ -35,6 +35,23 @@ module JsonToObjectExamples {
             proc init() {}
         }
 
+
+        class FooClass {
+            
+            var name: string;
+            var id: int;
+            var isFoo: bool;
+            var fooType: FooType;
+
+            proc init(name: string, id: int, isFoo: bool, fooType: FooType) {
+                this.name = name;
+                this.id = id;
+                this.isFoo = isFoo;
+                this.fooType = fooType;
+
+            }
+        }
+
         record FooBarGroup {
             var name: string;
             var id: int;
@@ -77,5 +94,15 @@ module JsonToObjectExamples {
         fbm.add('one', fb);
         fbm.add('two', fbTwo);
         try! writeln("Writing FooBar map to JSON: %jt".format(fbm));
+
+        var fooClass = new FooClass('fooOne', 1, true, FooType.BAD);
+        var fooClassTwo = new FooClass('fooTwo', 2, false, FooType.GOOD);
+        var foos: [0..1] owned FooClass?;
+        foos[0] = fooClass;
+        foos[1] = fooClassTwo;
+        try! writeln("Writing FooClass Array %jt".format(foos));
+
+        var fooList = new list(foos);
+        try! writeln("writing foo class list to array %jt".format(fooList.toArray()));
     }
 }
